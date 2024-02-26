@@ -58,6 +58,7 @@ public class ExamplePlugin extends Plugin
 	@Override
 	protected void startUp() throws Exception
 	{
+		System.out.println("test");
 		this.database = new Database(this.config);
 		database.initialize();
 		//database.setupInitialCards();
