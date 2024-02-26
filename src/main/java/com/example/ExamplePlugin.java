@@ -137,11 +137,11 @@ public class ExamplePlugin extends Plugin
 	}
 
 	private void addSideTilesAsUnlockable(WorldPoint currentLocation) {
-		// Iterate through horizontal and vertical neighbors
+		// Iterate through all neighbors (including diagonal)
 		for (int dx = -1; dx <= 1; dx++) {
 			for (int dy = -1; dy <= 1; dy++) {
-				// Skip the current tile and diagonal tiles
-				if ((dx == 0 && dy == 0) || (dx != 0 && dy != 0)) {
+				// Skip the current tile
+				if (dx == 0 && dy == 0) {
 					continue;
 				}
 				int newX = currentLocation.getX() + dx;
