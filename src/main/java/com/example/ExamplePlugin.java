@@ -19,10 +19,8 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
 
-import java.awt.*;
 import java.util.*;
 import java.util.List;
-
 
 @Slf4j
 @PluginDescriptor(
@@ -75,7 +73,7 @@ public class ExamplePlugin extends Plugin
 		ExamplePanel panel = new ExamplePanel(this);
 		NavigationButton navButton = NavigationButton.builder()
 				.tooltip("Tileman Panel")
-				.icon(ImageUtil.getResourceStreamFromClass(getClass(), "/icon.png"))
+				.icon(ImageUtil.loadImageResource(getClass(), "/icon.png"))
 				.priority(70)
 				.panel(panel)
 				.build();
@@ -186,7 +184,7 @@ public class ExamplePlugin extends Plugin
 		double xpDiff = (int) (client.getOverallExperience() - database.getPrestigeXP(config.playerID()));
 		int unlockablePlayerTiles = (int) Math.floor(xpDiff / config.XPForAPlayerTile());
 		int unlockableRandomTiles = (int) Math.floor(xpDiff / config.XPForARandomTile());
-		System.out.println(unlockableRandomTiles);
+
 		database.updateUserStats(getPlayerTiles(), getRandomTiles(), getBonusTiles(), getXPUntilNextPlayerTile(), (int) client.getOverallExperience(), config.playerID());
 		playerTiles = unlockablePlayerTiles - database.countTilesByPlayerAndStatus(config.playerID(), 2);
 		randomTiles = unlockableRandomTiles - database.countTilesByPlayerAndStatus(config.playerID(), 3);
@@ -249,7 +247,6 @@ public class ExamplePlugin extends Plugin
 		return prestigePoints;
 	}
 
-
 	@Subscribe
 	public void onMenuEntryAdded(MenuEntryAdded event) {
 		final boolean shiftPressed = client.isKeyPressed(KeyCode.KC_SHIFT);
@@ -257,13 +254,45 @@ public class ExamplePlugin extends Plugin
 		WorldPoint tileWorldPoint = selectedTile.getWorldLocation();
 		MenuEntry[] menuEntries = client.getMenuEntries();
 		WorldPoint clicked = new WorldPoint(tileWorldPoint.getX(), tileWorldPoint.getY(), 0 );
+
+
 		if (started && !unlockedTiles.contains(clicked) && !unlockableTiles.contains(clicked)) {
 			MenuEntry[] newEntries = Arrays.stream(menuEntries)
 					.filter(entry -> !entry.getOption().equals("Walk here"))
 					.toArray(MenuEntry[]::new);
-
-			// Update the menu entries
 			client.setMenuEntries(newEntries);
+
+		}
+
+		if (shiftPressed && event.getOption().equals("Walk here")) {
+			/*
+			if(unlockedTiles.contains(clicked)) {
+				client.createMenuEntry(-1)
+						.setOption("Remove Tile")
+						.setTarget(event.getTarget())
+						.setType(MenuAction.RUNELITE);
+			} else */if(unlockableTiles.contains(clicked)) {
+				client.createMenuEntry(-1)
+						.setOption("Unlock Tile")
+						.setTarget(event.getTarget())
+						.setType(MenuAction.RUNELITE);
+			}
+		}
+	}
+
+	@Subscribe
+	public void onMenuOptionClicked(MenuOptionClicked event) {
+		if (event.getMenuAction().getId() != MenuAction.RUNELITE.getId()) {
+			return;
+		}
+
+		if (event.getMenuOption().equals("Unlock Tile") && playerTiles >= 1) {
+			Tile target = client.getSelectedSceneTile();
+			WorldPoint tileWorldPoint = target.getWorldLocation();
+			if (tileWorldPoint == null) {
+				return;
+			}
+			checkAndUnlockTile(tileWorldPoint);
 		}
 	}
 
