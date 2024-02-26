@@ -284,6 +284,7 @@ public class ExamplePlugin extends Plugin
 				lastPlayerLocation = currentLocation;
 			}
 			if (prestigePoints != prevPrestigePoints) {
+				loadTilesFromDatabase();
 				reloadScene();
 				prevPrestigePoints = prestigePoints;
 			}
