@@ -305,6 +305,7 @@ public class ExamplePlugin extends Plugin
 		WorldPoint currentLocation = client.getLocalPlayer().getWorldLocation();
 		if(started) {
 			int databaseTotalTiles = database.getNumberOfTiles();
+			int localTotalTiles = unlockedTiles.size() + unlockableTiles.size();
 			if (!unlockedTiles.contains((new WorldPoint(currentLocation.getX(), currentLocation.getY(), 0)))) {
 				checkAndUnlockTile(currentLocation);
 
@@ -317,9 +318,8 @@ public class ExamplePlugin extends Plugin
 				unlockRandomTile(unlocked, 3);
 				addSideTilesAsUnlockable(unlocked);
 			}
-			if (databaseTotalTiles != (unlockedTiles.size() + unlockableTiles.size())) {
-				System.out.println("database tiles: " + databaseTotalTiles);
-				System.out.println("local tiles: " + (unlockedTiles.size() + unlockableTiles.size()));
+			if (databaseTotalTiles != localTotalTiles) {
+				System.out.println("Updating tiles from db");
 				loadTilesFromDatabase();
 				reloadScene();
 				updateOverlayStats();
