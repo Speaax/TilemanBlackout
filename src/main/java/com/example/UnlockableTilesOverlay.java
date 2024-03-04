@@ -42,7 +42,7 @@ public class UnlockableTilesOverlay extends Overlay
     @Override
     public Dimension render(Graphics2D graphics)
     {
-        final Collection<WorldPoint> unlockableTiles = plugin.getUnlockableTiles();
+        final Collection<WorldPoint> unlockableTiles = plugin.getViewableUnlockableTiles();
         if (unlockableTiles.isEmpty())
         {
             return null;
@@ -60,17 +60,17 @@ public class UnlockableTilesOverlay extends Overlay
             Color baseColor = config.highlightTileColor();
             Color highlightColor = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), config.alphaValue());
 
-            drawTile(graphics, point, highlightColor, null, stroke); // Assuming no labels for unlockable tiles
+            drawTile(graphics, point, highlightColor, stroke); // Assuming no labels for unlockable tiles
         }
 
         return null;
     }
 
-    private void drawTile(Graphics2D graphics, WorldPoint point, Color color, @Nullable String label, Stroke borderStroke)
+    private void drawTile(Graphics2D graphics, WorldPoint point, Color color, Stroke borderStroke)
     {
         WorldPoint playerLocation = client.getLocalPlayer().getWorldLocation();
 
-        if (point.distanceTo(playerLocation) >= MAX_DRAW_DISTANCE)
+        if (point.distanceTo(playerLocation) >= config.drawDistance())
         {
             return;
         }
@@ -87,15 +87,6 @@ public class UnlockableTilesOverlay extends Overlay
             Color baseColor = config.highlightTileColor();
             Color highlightColor = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), config.alphaValue());
             OverlayUtil.renderPolygon(graphics, poly, color, highlightColor, borderStroke);
-        }
-
-        if (!Strings.isNullOrEmpty(label))
-        {
-            Point canvasTextLocation = Perspective.getCanvasTextLocation(client, graphics, lp, label, 0);
-            if (canvasTextLocation != null)
-            {
-                OverlayUtil.renderTextLocation(graphics, canvasTextLocation, label, color);
-            }
         }
     }
 }

@@ -43,6 +43,15 @@ public interface ExampleConfig extends Config {
 	@Range(min = 0, max = 255)
 	default int alphaValue() {return 25;}
 
+	@ConfigItem(
+			position = 4,
+			keyName = "drawDistance",
+			name = "Draw Distance",
+			description = "Neightbor Tiles draw distance",
+			section = settingsSection
+	)
+	@Range(min = 0, max = 255)
+	default int drawDistance() {return 25;}
 	@ConfigSection(
 			name = "Playstyle",
 			description = "Change your playstyle settings",
