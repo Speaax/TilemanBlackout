@@ -209,7 +209,7 @@ public class ExamplePlugin extends Plugin
 	}
 
 	public void updateOverlayStats() {
-		long startTime = System.nanoTime();
+		//long startTime = System.nanoTime();
 		double xpDiff = (int) client.getOverallExperience();
 		int unlockablePlayerTiles = (int) Math.floor(xpDiff / config.XPForAPlayerTile());
 		int unlockableRandomTiles = (int) Math.floor(xpDiff / config.XPForARandomTile());
@@ -217,6 +217,7 @@ public class ExamplePlugin extends Plugin
 		//playerTiles
 		playerTiles = unlockablePlayerTiles - database.getPlayerTiles(config.playerID());
 		randomTiles = unlockableRandomTiles - database.getRandomTiles(config.playerID());
+		System.out.println("Unlockable tiles: " + unlockableRandomTiles + " Unlocked tiles: " + randomTiles + " Database tiles: " + database.getRandomTiles(config.playerID()));
 
 		//nextPlayerTile
 		xpUntilNextPlayerTile = config.XPForAPlayerTile() - Integer.parseInt(Long.toString((client.getOverallExperience()) % config.XPForAPlayerTile()));
@@ -226,9 +227,9 @@ public class ExamplePlugin extends Plugin
 		//TotalTiles
 		totalTiles = unlockedTiles.size();
 
-		long endTime = System.nanoTime();
-		long elapsedTime = endTime - startTime;
-		System.out.println("Function execution time: " + elapsedTime + " nanoseconds " + unlockedTiles.size());
+		//long endTime = System.nanoTime();
+		//long elapsedTime = endTime - startTime;
+		//System.out.println("Function execution time: " + elapsedTime + " nanoseconds " + unlockedTiles.size());
 	}
 
 	public int getPlayerTiles() {
@@ -301,7 +302,6 @@ public class ExamplePlugin extends Plugin
 		if (client.getGameState() != GameState.LOGGED_IN) {
 			return;
 		}
-
 		WorldPoint currentLocation = client.getLocalPlayer().getWorldLocation();
 		if(started) {
 			int databaseTotalTiles = database.getNumberOfTiles();
@@ -312,11 +312,12 @@ public class ExamplePlugin extends Plugin
 				removeTilesNotInList(unlockedTiles);
 				lastPlayerLocation = currentLocation;
 			}
-			if (randomTiles > database.getRandomTiles(config.playerID())) {
-				System.out.println("Unlocking random tile");
+			if (randomTiles >= 1) {
+				System.out.println("Unlocking random tile" + "rando");
 				WorldPoint unlocked = getRandomUnlockableTile();
 				unlockRandomTile(unlocked, 3);
 				addSideTilesAsUnlockable(unlocked);
+				updateOverlayStats();
 			}
 			if (databaseTotalTiles != localTotalTiles) {
 				System.out.println("Updating tiles from db");
@@ -391,6 +392,7 @@ public class ExamplePlugin extends Plugin
 		if (database.getTileStatus(tile.getX(), tile.getY(), tile.getPlane()) == 1) {
 			// Update the status of the tile to 3 (randomly unlocked)
 			database.insertOrUpdateTile(tile.getX(), tile.getY(), tile.getPlane(), tileStatus, config.playerID());
+			//sets the database randomTile +=1 for the player
 			database.setRandomTiles(config.playerID());
 			unlockableTiles.remove(tile);
 			unlockedTiles.add(tile);

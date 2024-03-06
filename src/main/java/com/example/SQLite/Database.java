@@ -22,7 +22,7 @@ public class Database {
 
     private void initializeDataSource() {
         HikariConfig configMySQLDB = new HikariConfig();
-        configMySQLDB.setJdbcUrl("jdbc:mysql://" + this.config.ip() + "/dev");
+        configMySQLDB.setJdbcUrl("jdbc:mysql://" + this.config.ip() + "/tileman");
         configMySQLDB.setUsername(this.config.username());
         configMySQLDB.setPassword(this.config.password());
         dataSourceMySQL = new HikariDataSource(configMySQLDB);
