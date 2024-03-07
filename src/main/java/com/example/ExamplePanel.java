@@ -1,6 +1,4 @@
 package com.example;
-import com.example.SQLite.Database;
-import com.example.UI.TalentWindow;
 import com.example.UI.PrestigeWindow;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.ui.ColorScheme;

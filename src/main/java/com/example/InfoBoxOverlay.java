@@ -29,7 +29,7 @@ public class InfoBoxOverlay extends Overlay
         int playerTiles = plugin.getPlayerTiles();
         int xpUntilNextPlayerTile = plugin.getXPUntilNextPlayerTile();
         int xpUntilNextRandomTile = plugin.getXPUntilNextRandomTile();
-        int prestigePoints = plugin.getPrestigePoints();
+        int totalTiles = plugin.getTotalTiles();
 
         panelComponent.getChildren().clear();
         panelComponent.getChildren().add(LineComponent.builder()
@@ -53,7 +53,7 @@ public class InfoBoxOverlay extends Overlay
         panelComponent.getChildren().add(LineComponent.builder()
                 .left("Total tiles: ")
                 .leftColor(Color.WHITE)
-                .right(String.valueOf(prestigePoints))
+                .right(String.valueOf(totalTiles))
                 .leftColor(Color.WHITE)
                 .build());
 

@@ -37,28 +37,9 @@ public class Database {
              Statement stmt = conn.createStatement()) {
             System.out.println("Initialize DB");
 
-            // Create PrestigeCards table
-            String sql = "CREATE TABLE IF NOT EXISTS prestigecards (" +
-                    "id INT PRIMARY KEY AUTO_INCREMENT," +
-                    "leftTitle VARCHAR(255) NOT NULL," +
-                    "currentUnlocks INT NOT NULL," +
-                    "maxUnlocks INT NOT NULL," +
-                    "cost INT NOT NULL," +
-                    "description VARCHAR(255) NOT NULL," +
-                    "posX INT NOT NULL," +
-                    "posY INT NOT NULL," +
-                    "width INT NOT NULL," +
-                    "height INT NOT NULL" +
-                    ");";
-            stmt.execute(sql);
-
             // Create UserStats table
-            sql = "CREATE TABLE IF NOT EXISTS userstats (" +
+            String sql = "CREATE TABLE IF NOT EXISTS userstats (" +
                     "id INT PRIMARY KEY AUTO_INCREMENT," +
-                    "prestigePoints INT NOT NULL," +
-                    "prestigeXP INT NOT NULL," +
-                    "currentXP INT NOT NULL," +
-                    "xpForNextTile INT NOT NULL," +
                     "playerTiles INT NOT NULL," +
                     "randomTiles INT NOT NULL," +
                     "bonusTiles INT NOT NULL," +
@@ -80,8 +61,8 @@ public class Database {
         }
     }
 
-    public void updateUserStats(int playerTiles, int randomTiles, int bonusTiles, int xpForNextTile, int currentXP, int playerId) {
-        String sql = "UPDATE userstats SET playerTiles = ?, randomTiles = ?, bonusTiles = ?, xpForNextTile = ?, currentXP = ? WHERE id = ?";
+    public void updateUserStats(int playerTiles, int randomTiles, int bonusTiles, int playerId) {
+        String sql = "UPDATE userstats SET playerTiles = ?, randomTiles = ?, bonusTiles = ? WHERE id = ?";
 
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -89,9 +70,7 @@ public class Database {
             pstmt.setInt(1, playerTiles);
             pstmt.setInt(2, randomTiles);
             pstmt.setInt(3, bonusTiles);
-            pstmt.setInt(4, xpForNextTile);
-            pstmt.setInt(5, currentXP);
-            pstmt.setInt(6, playerId); // Use config.playerID() value to identify the row
+            pstmt.setInt(4, playerId);
 
             pstmt.executeUpdate();
         } catch (SQLException e) {
@@ -115,46 +94,6 @@ public class Database {
         }
     }
 
-    public void prestigeUpdate(int additionalPrestigePoints, int prestigeXP) {
-        String selectSql = "SELECT prestigePoints FROM userstats WHERE id = 1";
-        // Correct the syntax error in the update statement
-        String updateSql = "UPDATE userstats SET prestigePoints = ?, prestigeXP = ? WHERE id IN (1, 2)";
-
-        try (Connection conn = getConnection();
-             PreparedStatement selectStmt = conn.prepareStatement(selectSql);
-             PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
-
-            // Fetch current prestigePoints
-            int currentPrestigePoints = 0;
-            ResultSet rs = selectStmt.executeQuery();
-            if (rs.next()) {
-                currentPrestigePoints = rs.getInt("prestigePoints");
-            }
-
-            // Add additionalPrestigePoints to currentPrestigePoints
-            int newPrestigePoints = currentPrestigePoints + additionalPrestigePoints;
-
-            // Set values for the update statement
-            updateStmt.setInt(1, newPrestigePoints);
-            updateStmt.setInt(2, prestigeXP);
-
-            updateStmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error updating user stats: " + e.getMessage());
-        }
-    }
-
-
-    public void clearTilesByStatus(int status) {
-        String sql = "DELETE FROM tiles WHERE status = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, status);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error clearing tiles: " + e.getMessage());
-        }
-    }
 
     public List<WorldPoint> getTilesByStatus(int status) {
         List<WorldPoint> tiles = new ArrayList<>();
@@ -244,40 +183,7 @@ public class Database {
         return status; // Returns the status of the tile, or -1 if not found or an error occurs
     }
 
-
-
-
-
-
-    public void setupInitialCards () throws SQLException {
-        try (Connection conn = getConnection();
-             Statement stmt = conn.createStatement()) {
-
-            // List of initial card data
-            List<PrestigeCardData> initialCards = Arrays.asList(
-                    new PrestigeCardData("Start", 0, 1, 0, "Unlock a random tile every time you get 1000 XP", 1000, 1000, 300, 100),
-                    new PrestigeCardData("Prepare for trouble", 0, 4, 1000, "+25% chance to unlock an additional tile for each point spent on this talent.", 1000, 1140, 300, 100),
-                    new PrestigeCardData("And make it double", 0, 1, 5000, "Doubles the % chance to unlock extra tiles(can exceed 100% for multiple tiles)", 1000, 1280, 300, 100),
-                    new PrestigeCardData("test", 0, 1, 5000, "Doubles the % chance to unlock extra tiles(can exceed 100% for multiple tiles)", 1000, 1280, 300, 100)
-                    // ... Add other initial cards ...
-            );
-
-            for (PrestigeCardData card : initialCards) {
-                String checkSql = "SELECT COUNT(*) FROM PrestigeCards WHERE leftTitle = ?";
-                try (PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
-                    checkStmt.setString(1, card.getLeftTitle());
-                    ResultSet rs = checkStmt.executeQuery();
-                    if (!rs.next() || rs.getInt(1) == 0) {
-                        insertPrestigeCard(card.getLeftTitle(), card.getCurrentUnlocks(), card.getMaxUnlocks(), card.getCost(), card.getDescription(), card.getPosX(), card.getPosY(), card.getWidth(), card.getHeight());
-                    }
-                } catch (SQLException e) {
-                    System.out.println("Error checking for card existence: " + e.getMessage());
-                }
-            }
-        }
-    }
-
-        public void setupInitialUserStats () {
+    public void setupInitialUserStats () {
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement()) {
 
@@ -289,139 +195,32 @@ public class Database {
             }
             // List of initial user statistics data
             List<UserStatsData> initialUserStats = Arrays.asList(
-                    new UserStatsData(1000, 0, 0, 1000, 0, 0, 0, 0), // Adjust values as needed
-                    new UserStatsData(1000, 0, 0, 1000, 0, 0, 0, 0) // Adjust values as needed
+                    new UserStatsData(0, 0, 0, 0), // Adjust values as needed
+                    new UserStatsData(0, 0, 0, 0) // Adjust values as needed
             );
             for (UserStatsData userStats : initialUserStats) {
-                insertUserStats(userStats.getPrestigePoints(), userStats.getPrestigeXP(), userStats.getCurrentXP(), userStats.getXpForNextTile(), userStats.getPlayerTiles(), userStats.getRandomTiles(), userStats.getBonusTiles(), userStats.getStarted());
+                insertUserStats(userStats.getPlayerTiles(), userStats.getRandomTiles(), userStats.getBonusTiles(), userStats.getStarted());
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
+    public void insertUserStats (int playerTiles, int randomTiles, int bonusTiles, int started){
 
-        public void insertPrestigeCard (String leftTitle,int currentUnlocks, int maxUnlocks, int cost, String
-            description,int posX, int posY, int width, int height){
-        String sql = "INSERT INTO prestigecards(leftTitle, currentUnlocks, maxUnlocks, cost, description, posX, posY, width, height) VALUES(?,?,?,?,?,?,?,?,?)";
+        String sql = "INSERT INTO userstats(playerTiles, randomTiles, bonusTiles, started) VALUES(?,?,?,?)";
 
         try (Connection conn = getConnection(); // Get a connection from the connection pool
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, leftTitle);
-            pstmt.setInt(2, currentUnlocks);
-            pstmt.setInt(3, maxUnlocks);
-            pstmt.setInt(4, cost);
-            pstmt.setString(5, description);
-            pstmt.setInt(6, posX);
-            pstmt.setInt(7, posY);
-            pstmt.setInt(8, width);
-            pstmt.setInt(9, height);
+            pstmt.setInt(1, playerTiles);
+            pstmt.setInt(2, randomTiles);
+            pstmt.setInt(3, bonusTiles);
+            pstmt.setInt(4, started);
             pstmt.executeUpdate();
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
     }
-
-    public void insertUserStats ( int prestigePoints, int prestigeXP, int currentXP, int xpForNextTile,
-                                         int playerTiles, int randomTiles, int bonusTiles, int started){
-
-        String sql = "INSERT INTO userstats(prestigePoints, prestigeXP, currentXP, xpForNextTile, playerTiles, randomTiles, bonusTiles, started) VALUES(?,?,?,?,?,?,?,?)";
-
-        try (Connection conn = getConnection(); // Get a connection from the connection pool
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, prestigePoints);
-            pstmt.setInt(2, prestigeXP);
-            pstmt.setInt(3, currentXP);
-            pstmt.setInt(4, xpForNextTile);
-            pstmt.setInt(5, playerTiles);
-            pstmt.setInt(6, randomTiles);
-            pstmt.setInt(7, bonusTiles);
-            pstmt.setInt(8, started);
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-        }
-    }
-
-
-    public List<PrestigeCardData> getPrestigeCards () {
-        List<PrestigeCardData> cards = new ArrayList<>();
-        String sql = "SELECT * FROM prestigecards";
-
-        try (Connection conn = getConnection(); // Get a connection from the connection pool
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                PrestigeCardData card = new PrestigeCardData(
-                        rs.getString("leftTitle"),
-                        rs.getInt("currentUnlocks"),
-                        rs.getInt("maxUnlocks"),
-                        rs.getInt("cost"),
-                        rs.getString("description"),
-                        rs.getInt("posX"),
-                        rs.getInt("posY"),
-                        rs.getInt("width"),
-                        rs.getInt("height")
-                );
-                cards.add(card);
-            }
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-        }
-        return cards;
-    }
-
-
-    public void updateCurrentUnlocks (String leftTitle,boolean isUnlock, int cost){
-        String selectSql = "SELECT currentUnlocks, maxUnlocks FROM prestigecards WHERE leftTitle = ?";
-        String updateSql = "UPDATE prestigecards SET currentUnlocks = ? WHERE leftTitle = ?";
-
-        try (Connection conn = getConnection();
-             PreparedStatement selectStmt = conn.prepareStatement(selectSql);
-             PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
-
-            // Get the currentUnlocks and maxUnlocks values from the database
-            selectStmt.setString(1, leftTitle);
-            ResultSet resultSet = selectStmt.executeQuery();
-
-            int currentPrestigePoints = getPrestigePoints();
-            if (isUnlock && cost > currentPrestigePoints) {
-                System.out.println("Insufficient Prestige Points. Cannot unlock.");
-                return;
-            }
-            if (resultSet.next()) {
-                int currentUnlocks = resultSet.getInt("currentUnlocks");
-                int maxUnlocks = resultSet.getInt("maxUnlocks");
-
-                if (isUnlock) {
-                    if (currentUnlocks < maxUnlocks) {
-                        currentUnlocks++;
-                    } else {
-                        System.out.println("Maximum unlocks reached, cannot unlock further.");
-                        return;
-                    }
-                } else {
-                    if (currentUnlocks > 0) {
-                        currentUnlocks--;
-                    } else {
-                        System.out.println("No unlocks to refund.");
-                        return;
-                    }
-                }
-                updatePrestigePoints(conn, cost, isUnlock);
-                // Update the database with the new currentUnlocks value
-                updateStmt.setInt(1, currentUnlocks);
-                updateStmt.setString(2, leftTitle);
-                updateStmt.executeUpdate();
-
-            }
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-            // Handle exceptions as needed
-        }
-    }
-
 
     public int getPrestigePoints() {
         int prestigePoints = 0; // Default value in case of any issues
@@ -444,6 +243,24 @@ public class Database {
         return prestigePoints;
     }
 
+    public int getNumberOfTiles() {
+        String sql = "SELECT COUNT(*) AS total_tiles FROM tiles;";
+        int totalTiles = 0;
+        try (Connection conn = getConnection(); // Assuming getConnection() provides your database connection
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                totalTiles = rs.getInt("total_tiles");
+            }
+        } catch (SQLException e) {
+            System.out.println("Error fetching number of tiles: " + e.getMessage());
+        }
+
+        return totalTiles;
+    }
+
+
     public void updatePrestigePoints (Connection conn,int cost, boolean isUnlock){
         String sql = "UPDATE userstats SET prestigePoints = prestigePoints + ?";
         int pointsChange = isUnlock ? -cost : cost;
@@ -456,31 +273,6 @@ public class Database {
         }
     }
 
-
-    public int getCardCost(String cardLeftTitle){
-        String sql = "SELECT cost FROM prestigecards WHERE leftTitle = ?";
-        int cost = 0; // Default cost in case the card is not found
-
-        try (Connection conn = getConnection()) { // Use the connection from the pool
-            conn.setAutoCommit(false); // Start a transaction
-
-            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                pstmt.setString(1, cardLeftTitle);
-                ResultSet resultSet = pstmt.executeQuery();
-
-                if (resultSet.next()) {
-                    cost = resultSet.getInt("cost");
-                }
-            }
-
-            conn.commit(); // Commit the transaction
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-            // Rollback and handle exceptions as needed
-        }
-
-        return cost;
-    }
 
     public int getTotalTiles() {
         String sql = "SELECT playerTiles FROM userstats WHERE id = 1"; // Assuming 'id = 1' is the row you want to query
@@ -570,38 +362,21 @@ public class Database {
         }
     }
 
-    public int getCurrentUnlocks(String cardName) {
-        String sql = "SELECT currentUnlocks FROM prestigecards WHERE leftTitle = ?";
-        int currentUnlocks = 0;
-
-        try (Connection conn = getConnection(); // getConnection() should return your database connection
+    public int getPlayerTiles(int id) {
+        String sql = "SELECT playerTiles FROM userstats WHERE id = ?"; // Use a placeholder '?'
+        int playerTiles = 0;
+        try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, cardName);
+            // Set the placeholder value with the actual id
+            pstmt.setInt(1, id); // '1' here refers to the first placeholder in the query
+
             ResultSet rs = pstmt.executeQuery();
-
-            if (rs.next()) {
-                currentUnlocks = rs.getInt("currentUnlocks");
-            }
-        } catch (SQLException e) {
-            System.out.println("Error fetching current unlocks for " + cardName + ": " + e.getMessage());
-        }
-
-        return currentUnlocks;
-    }
-
-    public int getPlayerTiles() {
-        String sql = "SELECT playerTiles FROM userstats WHERE id = 1"; // Assuming 'id = 1' is the row you want to query
-        int playerTiles = 0;
-        try (Connection conn = getConnection(); // getConnection() should return your database connection
-             PreparedStatement pstmt = conn.prepareStatement(sql);
-             ResultSet rs = pstmt.executeQuery()) {
-
             if (rs.next()) {
                 playerTiles = rs.getInt("playerTiles");
             }
         } catch (SQLException e) {
-            System.out.println("Error fetching started: " + e.getMessage());
+            System.out.println("Error fetching playerTiles: " + e.getMessage());
         }
 
         return playerTiles;
@@ -640,40 +415,38 @@ public class Database {
         }
     }
 
-    public int getRandomTiles() {
-        String sql = "SELECT randomTiles FROM userstats WHERE id = 1"; // Assuming 'id = 1' is the row you want to query
+    public int getRandomTiles(int id) {
+        String sql = "SELECT randomTiles FROM userstats WHERE id = ?"; // Use a placeholder '?'
         int randomTiles = 0;
-        try (Connection conn = getConnection(); // getConnection() should return your database connection
-             PreparedStatement pstmt = conn.prepareStatement(sql);
-             ResultSet rs = pstmt.executeQuery()) {
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
+            // Set the placeholder value with the actual id
+            pstmt.setInt(1, id); // '1' here refers to the first placeholder in the query
+
+            ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
                 randomTiles = rs.getInt("randomTiles");
             }
         } catch (SQLException e) {
-            System.out.println("Error fetching started: " + e.getMessage());
+            System.out.println("Error fetching randomTiles: " + e.getMessage());
         }
 
         return randomTiles;
     }
 
-    public void setRandomTiles(int value) {
-        String updateSql = "UPDATE userstats SET randomTiles = ? WHERE id IN (1, 2)";
+    public void setRandomTiles(int id) {
+        String sql = "UPDATE userstats SET randomTiles = randomTiles + 1 WHERE id = ?"; // Use placeholders for value and id
 
         try (Connection conn = getConnection();
-             PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            if (value == 0) {
-                // Set bonusTiles to 0
-                updateStmt.setInt(1, 0);
-            } else if (value == 1) {
-                // Increment bonusTiles
-                int currentRandomTiles = getRandomTiles(); // Fetch the current bonusTiles value
-                updateStmt.setInt(1, currentRandomTiles + 1);
-            }
-            updateStmt.executeUpdate();
+            // Set the placeholder value for user ID
+            pstmt.setInt(1, id); // User ID
+
+            pstmt.executeUpdate(); // Execute the update statement
         } catch (SQLException e) {
-            System.out.println("Error updating randomTiles: " + e.getMessage());
+            System.out.println("Error setting randomTiles: " + e.getMessage());
         }
     }
 

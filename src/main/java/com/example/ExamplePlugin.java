@@ -6,6 +6,7 @@ import javax.inject.Inject;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
+import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
@@ -58,7 +59,6 @@ public class ExamplePlugin extends Plugin
 	@Override
 	protected void startUp() throws Exception
 	{
-		System.out.println("test");
 		this.database = new Database(this.config);
 		database.initialize();
 		//database.setupInitialCards();
@@ -81,7 +81,50 @@ public class ExamplePlugin extends Plugin
 
 		clientToolbar.addNavigation(navButton);
 		updateConfig();
+
+		//unlockRandomTilesInArea(20000);
 	}
+
+	public void unlockRandomTilesInArea(int numTiles) {
+		//WorldArea area = new WorldArea(1029, 2505, 2933, 1649, 0);
+		WorldArea area = new WorldArea(1907, 2777, 1927, 1121, 0);
+
+		int minX = area.getX();
+		int minY = area.getY();
+		int maxX = minX + area.getWidth();
+		int maxY = minY + area.getHeight();
+
+		List<WorldPoint> randomTiles = new ArrayList<>();
+		Random random = new Random();
+
+		// Generate 10,000 random tiles within the area
+		while (randomTiles.size() < numTiles) {
+			int x = random.nextInt(maxX - minX + 1) + minX;
+			int y = random.nextInt(maxY - minY + 1) + minY;
+			WorldPoint tile = new WorldPoint(x, y, 0);
+			if (area.contains(tile)) {
+				randomTiles.add(tile);
+			}
+		}
+
+		// Unlock the random tiles and their side tiles
+		int i = 0;
+		for (WorldPoint tile : randomTiles) {
+			unlockRandomTileTest(tile, 3); // tileStatus 3 is randomTiles I think
+			System.out.println("Added tile: " + tile + " " + i);
+			i += 1;
+			addSideTilesAsUnlockable(tile); // Assuming addSideTilesAsUnlockable is your function
+		}
+	}
+
+	public void unlockRandomTileTest(WorldPoint tile, int tileStatus) {
+		database.insertOrUpdateTile(tile.getX(), tile.getY(), tile.getPlane(), tileStatus, config.playerID());
+			//unlockableTiles.remove(tile);
+		unlockedTiles.add(tile);
+			//removeTilesNotInList(unlockedTiles);
+			//reloadScene();
+	}
+
 
 	@Override
 	protected void shutDown()
@@ -106,27 +149,11 @@ public class ExamplePlugin extends Plugin
 	}
 
 	public void clearTiles() {
-		//Never clearTilesByStatus(0), 0 means permanently unlocked tiles and should remain unlocked
-		database.clearTilesByStatus(1); // Clear unlockable tiles
-		database.clearTilesByStatus(2); // Clear player tiles
-		database.clearTilesByStatus(3); // Clear random tiles
-		database.clearTilesByStatus(4); // Clear bonus tiles
-		database.setPlayerTiles(0, config.playerID());
-		database.setRandomTiles(0);
-		database.setBonusTiles(0);
 		database.setStarted(1);
-		//database.prestigeUpdate(prestigePoints, (int) client.getOverallExperience());
-
 		WorldPoint currentLocation = client.getLocalPlayer().getWorldLocation();
 		if (currentLocation != null) {
-			// Set current location and immediate surrounding tiles as unlocked (status 1)
-			for (int dx = -1; dx <= 1; dx++) {
-				for (int dy = -1; dy <= 1; dy++) {
-					WorldPoint tile = currentLocation.dx(dx).dy(dy);
-					database.insertOrUpdateTile(tile.getX(), tile.getY(), tile.getPlane(), 4, 0); // Status 1 for unlocked
-					addSideTilesAsUnlockable(tile);
-				}
-			}
+			database.insertOrUpdateTile(currentLocation.getX(), currentLocation.getY(), currentLocation.getPlane(), 4, 0); // Status 1 for unlocked
+			addSideTilesAsUnlockable(currentLocation);
 		}
 		unlockedTiles = database.getTilesByStatus(4);
 		//reloadScene();
@@ -175,59 +202,36 @@ public class ExamplePlugin extends Plugin
 		unlockableTiles.addAll(newUnlockableTiles);
 	}
 
-	public int  playerTiles, randomTiles, bonusTiles, xpUntilNextPlayerTile, xpUntilNextRandomTile, prestigePoints;
+	public int  playerTiles, randomTiles, bonusTiles, xpUntilNextPlayerTile, xpUntilNextRandomTile, prestigePoints, totalTiles;
 	@Subscribe
 	public void onStatChanged(StatChanged statChanged) {
-		//updateAll();
+		updateOverlayStats();
 	}
-	public void updateAll() {
-		prestigePoints = database.countTilesByStatus(3) + database.countTilesByStatus(2);
-		double xpDiff = (int) (client.getOverallExperience() - database.getPrestigeXP(config.playerID()));
+
+	public void updateOverlayStats() {
+		//long startTime = System.nanoTime();
+		double xpDiff = (int) client.getOverallExperience();
 		int unlockablePlayerTiles = (int) Math.floor(xpDiff / config.XPForAPlayerTile());
 		int unlockableRandomTiles = (int) Math.floor(xpDiff / config.XPForARandomTile());
 
-		database.updateUserStats(getPlayerTiles(), getRandomTiles(), getBonusTiles(), getXPUntilNextPlayerTile(), (int) client.getOverallExperience(), config.playerID());
-		playerTiles = unlockablePlayerTiles - database.countTilesByPlayerAndStatus(config.playerID(), 2);
-		randomTiles = unlockableRandomTiles - database.countTilesByPlayerAndStatus(config.playerID(), 3);
-		bonusTiles = database.countTilesByStatus(4);
-		xpUntilNextPlayerTile = config.XPForAPlayerTile() - Integer.parseInt(Long.toString((client.getOverallExperience() - database.getPrestigeXP(config.playerID())) % config.XPForAPlayerTile()));
-		xpUntilNextRandomTile = config.XPForARandomTile() - Integer.parseInt(Long.toString((client.getOverallExperience() - database.getPrestigeXP(config.playerID())) % config.XPForARandomTile()));
-		if (xpDiff != 0) {
-			if (database.countTilesByPlayerAndStatus(config.playerID(), 3) < unlockableRandomTiles) {
-				WorldPoint unlocked = getRandomUnlockableTile();
-				unlockRandomTile(unlocked, 3);
-				addSideTilesAsUnlockable(unlocked);
-				//prepareForTrouble();
-				//reloadScene();
-			}
-		}
+		//playerTiles
+		playerTiles = unlockablePlayerTiles - database.getPlayerTiles(config.playerID());
+		randomTiles = unlockableRandomTiles - database.getRandomTiles(config.playerID());
+		//System.out.println("Unlockable tiles: " + unlockableRandomTiles + " Available tiles: " + randomTiles + " Database tiles: " + database.getRandomTiles(config.playerID()));
+
+		//nextPlayerTile
+		xpUntilNextPlayerTile = config.XPForAPlayerTile() - Integer.parseInt(Long.toString((client.getOverallExperience()) % config.XPForAPlayerTile()));
+		//nextRandomTile
+		xpUntilNextRandomTile = config.XPForARandomTile() - Integer.parseInt(Long.toString((client.getOverallExperience()) % config.XPForARandomTile()));
+
+		//TotalTiles
+		totalTiles = unlockedTiles.size();
+
+		//long endTime = System.nanoTime();
+		//long elapsedTime = endTime - startTime;
+		//System.out.println("Function execution time: " + elapsedTime + " nanoseconds " + unlockedTiles.size());
 	}
 
-
-	public void prepareForTrouble() {
-		int currentUnlockPrepareForTrouble = database.getCurrentUnlocks("Prepare for trouble");
-		int currentUnlockAndMakeItDouble = database.getCurrentUnlocks("Prepare for trouble");
-		int chance = 0;
-
-		if (currentUnlockPrepareForTrouble >= 1) {
-			chance = currentUnlockPrepareForTrouble * 25;
-		} else {
-			return;
-		}
-
-		if (currentUnlockAndMakeItDouble == 1) {
-			chance = chance * 2;
-		}
-		System.out.println("Chance: " + chance + "%");
-		Random random = new Random();
-		if (random.nextInt(100) < chance) { // Random roll to see if it's within the chance
-			WorldPoint unlocked = getRandomUnlockableTile();
-			if (unlocked != null) {
-				unlockRandomTile(unlocked, 4);
-				addSideTilesAsUnlockable(unlocked);
-			}
-		}
-	}
 	public int getPlayerTiles() {
 		return playerTiles;
 	}
@@ -247,6 +251,9 @@ public class ExamplePlugin extends Plugin
 	public int getPrestigePoints() {
 		return prestigePoints;
 	}
+	public int getTotalTiles() {
+		return totalTiles;
+	}
 
 	@Subscribe
 	public void onMenuEntryAdded(MenuEntryAdded event) {
@@ -264,15 +271,8 @@ public class ExamplePlugin extends Plugin
 			client.setMenuEntries(newEntries);
 
 		}
-
 		if (shiftPressed && event.getOption().equals("Walk here")) {
-			/*
-			if(unlockedTiles.contains(clicked)) {
-				client.createMenuEntry(-1)
-						.setOption("Remove Tile")
-						.setTarget(event.getTarget())
-						.setType(MenuAction.RUNELITE);
-			} else */if(unlockableTiles.contains(clicked)) {
+			if(unlockableTiles.contains(clicked)) {
 				client.createMenuEntry(-1)
 						.setOption("Unlock Tile")
 						.setTarget(event.getTarget())
@@ -297,26 +297,33 @@ public class ExamplePlugin extends Plugin
 		}
 	}
 
-
-	public int prevPrestigePoints = 0;
 	@Subscribe
 	public void onGameTick(GameTick gameTick) {
 		if (client.getGameState() != GameState.LOGGED_IN) {
 			return;
 		}
-		updateAll();
 		WorldPoint currentLocation = client.getLocalPlayer().getWorldLocation();
 		if(started) {
+			int databaseTotalTiles = database.getNumberOfTiles();
+			int localTotalTiles = unlockedTiles.size() + unlockableTiles.size();
 			if (!unlockedTiles.contains((new WorldPoint(currentLocation.getX(), currentLocation.getY(), 0)))) {
 				checkAndUnlockTile(currentLocation);
 
 				removeTilesNotInList(unlockedTiles);
 				lastPlayerLocation = currentLocation;
 			}
-			if (prestigePoints != prevPrestigePoints) {
+			if (randomTiles >= 1) {
+				//System.out.println("Unlocking random tile");
+				WorldPoint unlocked = getRandomUnlockableTile();
+				unlockRandomTile(unlocked, 3);
+				addSideTilesAsUnlockable(unlocked);
+				updateOverlayStats();
+			}
+			if (databaseTotalTiles != localTotalTiles) {
+				//System.out.println("Updating tiles from db");
 				loadTilesFromDatabase();
 				reloadScene();
-				prevPrestigePoints = prestigePoints;
+				updateOverlayStats();
 			}
 		}
 	}
@@ -330,9 +337,12 @@ public class ExamplePlugin extends Plugin
 			database.insertOrUpdateTile(currentLocation.getX(), currentLocation.getY(), 0, 2, config.playerID());
 			addSideTilesAsUnlockable(new WorldPoint(currentLocation.getX(), currentLocation.getY(), 0 ));
 
-			playerTiles -= 1;
-			database.setPlayerTiles(-1, config.playerID());
+			//playerTiles += 1;
+			database.setPlayerTiles(1, config.playerID());
+			updateOverlayStats();
+			reloadScene();
 		}
+		/*
 		if(!unlockedTiles.contains(new WorldPoint(currentLocation.getX(), currentLocation.getY(), 0 )) && playerTiles >= 1) {
 			// Unlock the tile
 			unlockNewTile(new WorldPoint(currentLocation.getX(), currentLocation.getY(), 0 ));
@@ -341,14 +351,17 @@ public class ExamplePlugin extends Plugin
 			database.insertOrUpdateTile(currentLocation.getX(), currentLocation.getY(), 0, 2, config.playerID());
 			addSideTilesAsUnlockable(new WorldPoint(currentLocation.getX(), currentLocation.getY(), 0 ));
 
-			playerTiles -= 1;
-			database.setPlayerTiles(-1, config.playerID());
+			//playerTiles += 1;
+			database.setPlayerTiles(1, config.playerID());
+			System.out.println("!unlockedTiles");
 		}
+
+		 */
 		long startTime = System.nanoTime();
 		removeTilesNotInList(unlockedTiles);
 		long endTime = System.nanoTime();
 		long elapsedTime = endTime - startTime;
-		System.out.println("Function execution time: " + elapsedTime + " nanoseconds");
+		//System.out.println("Function execution time: " + elapsedTime + " nanoseconds");
 
 		//Scene();
 	}
@@ -374,13 +387,20 @@ public class ExamplePlugin extends Plugin
 
 	public void unlockRandomTile(WorldPoint tile, int tileStatus) {
 		// Check if the tile exists in the database and is unlockable
+		Scene scene = client.getScene();
+
 		if (database.getTileStatus(tile.getX(), tile.getY(), tile.getPlane()) == 1) {
 			// Update the status of the tile to 3 (randomly unlocked)
 			database.insertOrUpdateTile(tile.getX(), tile.getY(), tile.getPlane(), tileStatus, config.playerID());
+			//sets the database randomTile +=1 for the player
+			database.setRandomTiles(config.playerID());
 			unlockableTiles.remove(tile);
 			unlockedTiles.add(tile);
 			removeTilesNotInList(unlockedTiles);
 			//reloadScene();
+			if(WorldPoint.isInScene(scene, tile.getX(), tile.getY())) {
+				reloadScene();
+			}
 		}
 	}
 
@@ -413,8 +433,32 @@ public class ExamplePlugin extends Plugin
 		if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
 			if(started) {
 				removeTilesNotInList(unlockedTiles);
+				setViewableUnlockableTiles();
+				System.out.println(setViewableUnlockableTiles().size());
+				System.out.println(unlockableTiles.size());
 			}
 		}
+	}
+
+	public static List<WorldPoint> viewableUnlockableTiles = new ArrayList<>();
+	public List<WorldPoint> getViewableUnlockableTiles() {
+		return viewableUnlockableTiles;
+	}
+	public List<WorldPoint> setViewableUnlockableTiles() {
+		//List<WorldPoint> viewableTiles = new ArrayList<>();
+		viewableUnlockableTiles.clear();
+		// Get the currently loaded scene
+		Scene scene = client.getScene();
+
+		// Iterate through the tiles in getRegionUnlockableTiles
+		for (WorldPoint tile : getUnlockableTiles()) {
+			// Check if the tile is present in the loaded scene
+			if (WorldPoint.isInScene(scene, tile.getX(), tile.getY())) {
+				viewableUnlockableTiles.add(tile);
+			}
+		}
+
+		return viewableUnlockableTiles;
 	}
 
 	public boolean unlockTilesEnabled = true;
@@ -438,8 +482,6 @@ public class ExamplePlugin extends Plugin
 		}
 	}
 
-
-	private boolean hideTiles;
 	private boolean neightborTiles;
 
 	private void updateConfig()
@@ -448,11 +490,12 @@ public class ExamplePlugin extends Plugin
 		neightborTiles = config.neighborTiles();
 		if (neightborTiles) {
 			overlayManager.add(unlockableTilesOverlay);
+			reloadScene();
 		}
 		else {
 			overlayManager.remove(unlockableTilesOverlay);
+			reloadScene();
 		}
-		reloadScene();
 	}
 
 	public Integer checkStarted() {
