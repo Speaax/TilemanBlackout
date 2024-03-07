@@ -217,7 +217,7 @@ public class ExamplePlugin extends Plugin
 		//playerTiles
 		playerTiles = unlockablePlayerTiles - database.getPlayerTiles(config.playerID());
 		randomTiles = unlockableRandomTiles - database.getRandomTiles(config.playerID());
-		System.out.println("Unlockable tiles: " + unlockableRandomTiles + " Unlocked tiles: " + randomTiles + " Database tiles: " + database.getRandomTiles(config.playerID()));
+		//System.out.println("Unlockable tiles: " + unlockableRandomTiles + " Available tiles: " + randomTiles + " Database tiles: " + database.getRandomTiles(config.playerID()));
 
 		//nextPlayerTile
 		xpUntilNextPlayerTile = config.XPForAPlayerTile() - Integer.parseInt(Long.toString((client.getOverallExperience()) % config.XPForAPlayerTile()));
@@ -313,14 +313,14 @@ public class ExamplePlugin extends Plugin
 				lastPlayerLocation = currentLocation;
 			}
 			if (randomTiles >= 1) {
-				System.out.println("Unlocking random tile" + "rando");
+				//System.out.println("Unlocking random tile");
 				WorldPoint unlocked = getRandomUnlockableTile();
 				unlockRandomTile(unlocked, 3);
 				addSideTilesAsUnlockable(unlocked);
 				updateOverlayStats();
 			}
 			if (databaseTotalTiles != localTotalTiles) {
-				System.out.println("Updating tiles from db");
+				//System.out.println("Updating tiles from db");
 				loadTilesFromDatabase();
 				reloadScene();
 				updateOverlayStats();
